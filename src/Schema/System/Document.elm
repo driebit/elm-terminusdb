@@ -1,7 +1,7 @@
 module Schema.System.Document exposing
     ( Document
-    , decode
-    , decodeType
+    , decoder
+    , decoderFor
     )
 
 import Json.Decode as Decode exposing (Decoder)
@@ -12,22 +12,20 @@ import Tuple
 
 type alias Document =
     { id : String
-    , type_ : String
     , comment : Schema.TranslatedText
     }
 
 
-decode : Prefix.Context -> Decoder Document
-decode context =
-    Decode.map3 Document
+decoder : Prefix.Context -> Decoder Document
+decoder context =
+    Decode.map2 Document
         (Decode.field "@id" Decode.string)
-        (Decode.field "@type" Decode.string)
         (Schema.field context Prefix.Rdfs "comment" Schema.translatedText)
 
 
-decodeType : Prefix.Context -> Prefix -> String -> (String -> String -> Schema.TranslatedText -> value) -> Decoder value
-decodeType context prefix typeName documentType =
-    Decode.map3 documentType
-        (Decode.field "@id" Decode.string)
-        (Schema.requireType context prefix typeName)
-        (Schema.field context Prefix.Rdfs "comment" Schema.translatedText)
+decoderFor : Prefix.Context -> Prefix -> String -> (String -> Schema.TranslatedText -> value) -> Decoder value
+decoderFor context prefix typeName documentType =
+    Schema.requireType context prefix typeName <|
+        Decode.map2 documentType
+            (Decode.field "@id" Decode.string)
+            (Schema.field context Prefix.Rdfs "comment" Schema.translatedText)

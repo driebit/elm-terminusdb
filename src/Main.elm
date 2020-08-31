@@ -2,21 +2,21 @@ module Main exposing (..)
 
 import Browser
 import Html exposing (Html)
+import Html.Events as Html
 import Http
+import Schema exposing (Value(..))
+import Schema.Prefix exposing (Prefix(..))
 import Schema.System.User exposing (User)
-import Woql.Api
+import Woql
+import Woql.Api exposing (Session)
+import Woql.Query exposing (..)
 
 
-type alias Model =
-    { config : Woql.Api.Config
-    , state : State
-    }
-
-
-type State
+type Model
     = Connecting
-    | Connected User
-    | WithError String
+    | Connected Session
+    | ConnectedWithError String Session
+    | Error String
 
 
 type alias Flags =
@@ -24,7 +24,9 @@ type alias Flags =
 
 
 type Msg
-    = GotConnected (Result Http.Error User)
+    = GotConnected (Result Http.Error Session)
+    | PerformQuery Query
+    | GotQueryResponse (Result Http.Error Woql.Response)
 
 
 main =
@@ -38,58 +40,86 @@ main =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    let
-        config =
-            { server = "http://127.0.0.1:6363"
-            }
-    in
-    ( { config = config
-      , state = Connecting
-      }
-    , Woql.Api.connect GotConnected config
+    ( Connecting
+    , Woql.Api.connect GotConnected "http://127.0.0.1:6363"
     )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        errorString reason =
+            case reason of
+                Http.BadUrl url ->
+                    "Bad url: " ++ url
+
+                Http.Timeout ->
+                    "Network timeout"
+
+                Http.NetworkError ->
+                    "Network error"
+
+                Http.BadStatus status ->
+                    "Bad status: " ++ String.fromInt status
+
+                Http.BadBody body ->
+                    "Bad body: " ++ body
+    in
     case msg of
-        GotConnected (Ok user) ->
+        GotConnected (Ok session) ->
             let
                 _ =
-                    Debug.log "user" user
+                    Debug.log "session" session
             in
-            ( { model | state = Connected user }, Cmd.none )
+            ( Connected session, Cmd.none )
 
         GotConnected (Err reason) ->
-            let
-                error =
-                    case reason of
-                        Http.BadUrl url ->
-                            "Bad url: " ++ url
+            ( Error <| errorString reason, Cmd.none )
 
-                        Http.Timeout ->
-                            "Network timeout"
+        PerformQuery query ->
+            case model of
+                Connected session ->
+                    ( model, Woql.Api.query GotQueryResponse Nothing query session )
 
-                        Http.NetworkError ->
-                            "Network error"
+                _ ->
+                    ( model, Cmd.none )
 
-                        Http.BadStatus status ->
-                            "Bad status: " ++ String.fromInt status
+        GotQueryResponse (Ok result) ->
+            ( model, Cmd.none )
 
-                        Http.BadBody body ->
-                            "Bad body: " ++ body
-            in
-            ( { model | state = WithError error }, Cmd.none )
+        GotQueryResponse (Err reason) ->
+            ( Error <| errorString reason, Cmd.none )
 
 
 view : Model -> Html Msg
-view { state } =
-    case state of
+view model =
+    case model of
         Connecting ->
             Html.text "Connecting.."
 
-        Connected user ->
-            Html.text <| "Connected " ++ user.name
+        Connected session ->
+            Html.div []
+                [ Html.text <| "Connected " ++ session.user.name
+                , Html.button
+                    [ Html.onClick
+                        (PerformQuery <|
+                            Select
+                                [ "Start", "Start_Label", "End", "End_Label" ]
+                                (And
+                                    [ Triple (Subject (Var "Journey")) (Predicate (Node Rdf "type")) (Object (Node Scm "Journey"))
+                                    , Triple (Subject (Var "Journey")) (Predicate (Node Scm "start_station")) (Object (Var "Start"))
+                                    , Optional (Triple (Subject (Var "Start")) (Predicate (Node Rdfs "label")) (Object (Var "Start_Label")))
+                                    , Optional (Triple (Subject (Var "End")) (Predicate (Node Rdfs "label")) (Object (Var "End_Label")))
+                                    , Triple (Subject (Var "Journey")) (Predicate (Node Scm "bicycle")) (Object (Var "Bike"))
+                                    ]
+                                )
+                        )
+                    ]
+                    []
+                ]
 
-        WithError message ->
+        ConnectedWithError message _ ->
+            Html.text <| "Error " ++ message
+
+        Error message ->
             Html.text <| "Error " ++ message

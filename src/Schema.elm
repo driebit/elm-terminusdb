@@ -1,15 +1,26 @@
 module Schema exposing
     ( TranslatedText
+    , Value(..)
     , andMap
     , field
     , prefixed
     , requireType
     , translatedText
+    , value
     )
 
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
 import Schema.Prefix as Prefix exposing (Prefix)
+
+
+type Value
+    = StringLiteral String
+    | IntLiteral Int
+    | TextLiteral TranslatedText
+    | Node Prefix String
+    | Reference Prefix String
+    | Var String
 
 
 type alias TranslatedText =
@@ -27,10 +38,13 @@ prefixed decoder =
         |> Decode.andThen decoder
 
 
-requireType : Prefix.Context -> Prefix -> String -> Decoder String
-requireType context prefix type_ =
-    Decode.field "@type" Decode.string
-        |> Decode.andThen (match context prefix type_)
+requireType : Prefix.Context -> Prefix -> String -> Decoder a -> Decoder a
+requireType context prefix type_ decoder =
+    always
+        decoder
+        (Decode.field "@type" Decode.string
+            |> Decode.andThen (match context prefix type_)
+        )
 
 
 match : Prefix.Context -> Prefix -> String -> String -> Decoder String
@@ -74,9 +88,28 @@ prefixAndType type_ =
             ( "", "" )
 
 
-field context prefix typeName decoder =
+field : Prefix.Context -> Prefix -> String -> Decoder a -> Decoder a
+field context prefix name decoder =
     Prefix.fromContext context (Prefix.uri prefix)
-        |> List.map (\p -> Decode.field (p ++ ":" ++ typeName) decoder)
+        |> List.map (\p -> Decode.field (p ++ ":" ++ name) decoder)
+        |> Decode.oneOf
+
+
+value : Prefix.Context -> Prefix -> String -> a -> Decoder a
+value context prefix name instance =
+    Prefix.fromContext context (Prefix.uri prefix)
+        |> List.map
+            (\p ->
+                Decode.string
+                    |> Decode.andThen
+                        (\s ->
+                            if s == (p ++ ":" ++ name) then
+                                Decode.succeed instance
+
+                            else
+                                Decode.fail "Value does not match"
+                        )
+            )
         |> Decode.oneOf
 
 

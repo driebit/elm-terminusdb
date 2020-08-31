@@ -16,9 +16,12 @@ type alias Context =
 
 
 type Prefix
-    = Owl
+    = Api
+    | None
+    | Owl
     | Rdf
     | Rdfs
+    | Scm
     | System
     | Xsd
 
@@ -31,6 +34,12 @@ decode =
 uri : Prefix -> String
 uri prefix =
     case prefix of
+        Api ->
+            "http://terminusdb.com/schema/api"
+
+        None ->
+            ""
+
         Owl ->
             "http://www.w3.org/2002/07/owl#"
 
@@ -39,6 +48,9 @@ uri prefix =
 
         Rdfs ->
             "http://www.w3.org/2000/01/rdf-schema#"
+
+        Scm ->
+            "http://195.201.12.87:6365/Seshat/schema#"
 
         System ->
             "http://terminusdb.com/schema/system#"

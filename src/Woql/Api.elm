@@ -1,5 +1,5 @@
 module Woql.Api exposing
-    ( Config
+    ( Session
     , branch
     , clone
     , connect
@@ -17,14 +17,24 @@ module Woql.Api exposing
     )
 
 import Http
+import Json.Decode as Decode exposing (Decoder)
 import Schema
+import Schema.Prefix as Prefix
 import Schema.System.User as User exposing (User)
 import Url.Builder
+import Woql
+import Woql.Query exposing (Query)
 
 
-type alias Config =
-    { server : String
+type alias Session =
+    { server : ServerUrl
+    , context : Prefix.Context
+    , user : User
     }
+
+
+type alias ServerUrl =
+    String
 
 
 branch =
@@ -35,12 +45,18 @@ clone =
     Cmd.none
 
 
-connect : (Result Http.Error User -> msg) -> Config -> Cmd msg
-connect msg config =
+connect : (Result Http.Error Session -> msg) -> ServerUrl -> Cmd msg
+connect msg url =
     Http.get
-        { url = Url.Builder.crossOrigin config.server [] []
-        , expect = Http.expectJson msg (Schema.prefixed User.decode)
+        { url = Url.Builder.crossOrigin url [] []
+        , expect = Http.expectJson msg (Schema.prefixed (sessionDecoder url))
         }
+
+
+sessionDecoder : ServerUrl -> Prefix.Context -> Decoder Session
+sessionDecoder url context =
+    Decode.map (Session url context)
+        (User.decoder context)
 
 
 createDatabase =
@@ -75,8 +91,22 @@ push =
     Cmd.none
 
 
-query =
-    Cmd.none
+query : (Result Http.Error Woql.Response -> msg) -> Maybe Woql.CommitInfo -> Query -> Session -> Cmd msg
+query msg maybeInfo q session =
+    let
+        request =
+            case maybeInfo of
+                Nothing ->
+                    Woql.QueryRequest q
+
+                Just i ->
+                    Woql.QueryCommitRequest q i
+    in
+    Http.post
+        { url = Url.Builder.crossOrigin session.server [ "woql" ] []
+        , body = Http.jsonBody (Woql.request request)
+        , expect = Http.expectJson msg (Woql.response session.context)
+        }
 
 
 rebase =
