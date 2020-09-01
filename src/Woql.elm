@@ -10,7 +10,7 @@ module Woql exposing
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Schema
-import Schema.Prefix as Prefix
+import Schema.Prefix as Prefix exposing (Prefix)
 import Woql.Query exposing (Query)
 
 
@@ -61,20 +61,20 @@ response context =
 
 
 type Request
-    = QueryRequest Query
-    | QueryCommitRequest Query CommitInfo
+    = QueryRequest (List Prefix) Query
+    | QueryCommitRequest (List Prefix) Query CommitInfo
 
 
 request : Request -> Encode.Value
 request r =
     case r of
-        QueryRequest q ->
+        QueryRequest p q ->
             Encode.object
-                [ ( "query", Woql.Query.encode q )
+                [ ( "query", Woql.Query.encode p q )
                 ]
 
-        QueryCommitRequest q c ->
+        QueryCommitRequest p q c ->
             Encode.object
                 [ ( "commit_info", commitInfo c )
-                , ( "query", Woql.Query.encode q )
+                , ( "query", Woql.Query.encode p q )
                 ]

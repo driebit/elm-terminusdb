@@ -19,7 +19,7 @@ module Woql.Api exposing
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Schema
-import Schema.Prefix as Prefix
+import Schema.Prefix as Prefix exposing (Prefix)
 import Schema.System.User as User exposing (User)
 import Url.Builder
 import Woql
@@ -91,19 +91,19 @@ push =
     Cmd.none
 
 
-query : (Result Http.Error Woql.Response -> msg) -> Maybe Woql.CommitInfo -> Query -> Session -> Cmd msg
-query msg maybeInfo q session =
+query : (Result Http.Error Woql.Response -> msg) -> Maybe Woql.CommitInfo -> List Prefix -> Query -> Session -> Cmd msg
+query msg maybeInfo p q session =
     let
         request =
             case maybeInfo of
                 Nothing ->
-                    Woql.QueryRequest q
+                    Woql.QueryRequest p q
 
                 Just i ->
-                    Woql.QueryCommitRequest q i
+                    Woql.QueryCommitRequest p q i
     in
     Http.post
-        { url = Url.Builder.crossOrigin session.server [ "woql" ] []
+        { url = Url.Builder.crossOrigin session.server [ "woql", "admin", "driebit_test", "local", "branch", "master" ] []
         , body = Http.jsonBody (Woql.request request)
         , expect = Http.expectJson msg (Woql.response session.context)
         }

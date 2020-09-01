@@ -18,9 +18,7 @@ type Value
     = StringLiteral String
     | IntLiteral Int
     | TextLiteral TranslatedText
-    | Node Prefix String
     | Reference Prefix String
-    | Var String
 
 
 type alias TranslatedText =
@@ -34,7 +32,7 @@ andMap =
 
 prefixed : (Prefix.Context -> Decoder value) -> Decoder value
 prefixed decoder =
-    Prefix.decode
+    Prefix.decodeContext
         |> Decode.andThen decoder
 
 

@@ -25,7 +25,7 @@ type alias Flags =
 
 type Msg
     = GotConnected (Result Http.Error Session)
-    | PerformQuery Query
+    | PerformQuery (List Prefix) Query
     | GotQueryResponse (Result Http.Error Woql.Response)
 
 
@@ -76,10 +76,10 @@ update msg model =
         GotConnected (Err reason) ->
             ( Error <| errorString reason, Cmd.none )
 
-        PerformQuery query ->
+        PerformQuery prefixes query ->
             case model of
                 Connected session ->
-                    ( model, Woql.Api.query GotQueryResponse Nothing query session )
+                    ( model, Woql.Api.query GotQueryResponse Nothing prefixes query session )
 
                 _ ->
                     ( model, Cmd.none )
@@ -102,20 +102,27 @@ view model =
                 [ Html.text <| "Connected " ++ session.user.name
                 , Html.button
                     [ Html.onClick
-                        (PerformQuery <|
+                        (PerformQuery [ Scm ] <|
                             Select
                                 [ "Start", "Start_Label", "End", "End_Label" ]
                                 (And
-                                    [ Triple (Subject (Var "Journey")) (Predicate (Node Rdf "type")) (Object (Node Scm "Journey"))
-                                    , Triple (Subject (Var "Journey")) (Predicate (Node Scm "start_station")) (Object (Var "Start"))
-                                    , Optional (Triple (Subject (Var "Start")) (Predicate (Node Rdfs "label")) (Object (Var "Start_Label")))
-                                    , Optional (Triple (Subject (Var "End")) (Predicate (Node Rdfs "label")) (Object (Var "End_Label")))
-                                    , Triple (Subject (Var "Journey")) (Predicate (Node Scm "bicycle")) (Object (Var "Bike"))
+                                    [ Triple (Subject (Var "Journey")) (Predicate (Node "rdf:type")) (Object (Node "scm:Journey"))
+                                    , Triple (Subject (Var "Journey")) (Predicate (Node "scm:start_station")) (Object (Var "Start"))
+                                    , Optional (Triple (Subject (Var "Start")) (Predicate (Node "rdfs:label")) (Object (Var "Start_Label")))
+                                    , Optional (Triple (Subject (Var "End")) (Predicate (Node "rdfs:label")) (Object (Var "End_Label")))
+                                    , Triple (Subject (Var "Journey")) (Predicate (Node "scm:bicycle")) (Object (Var "Bike"))
                                     ]
                                 )
                         )
                     ]
-                    []
+                    [ Html.text "Bikes query" ]
+                , Html.button
+                    [ Html.onClick
+                        (PerformQuery [ Scm ] <|
+                            Triple (Subject (Var "Journey")) (Predicate (Node "rdf:type")) (Object (Node "scm:Journey"))
+                        )
+                    ]
+                    [ Html.text "Simplest query" ]
                 ]
 
         ConnectedWithError message _ ->

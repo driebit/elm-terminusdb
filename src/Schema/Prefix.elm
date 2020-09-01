@@ -1,14 +1,18 @@
 module Schema.Prefix exposing
     ( Context
     , Prefix(..)
-    , decode
+    , context
+    , decodeContext
+    , encodeContext
     , fromContext
+    , string
     , uri
     , uriFromContext
     )
 
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 
 
 type alias Context =
@@ -23,12 +27,56 @@ type Prefix
     | Rdfs
     | Scm
     | System
+    | Woql
     | Xsd
 
 
-decode : Decoder Context
-decode =
+context : List Prefix -> Context
+context =
+    List.foldl
+        (\p a -> Dict.insert (string p) (uri p) a)
+        Dict.empty
+
+
+string : Prefix -> String
+string prefix =
+    case prefix of
+        Api ->
+            "api"
+
+        None ->
+            ""
+
+        Owl ->
+            "owl"
+
+        Rdf ->
+            "rdf"
+
+        Rdfs ->
+            "rdfs"
+
+        Scm ->
+            "scm"
+
+        System ->
+            "system"
+
+        Woql ->
+            "woql"
+
+        Xsd ->
+            "xsd"
+
+
+decodeContext : Decoder Context
+decodeContext =
     Decode.field "@context" (Decode.dict Decode.string)
+
+
+encodeContext : Context -> Encode.Value
+encodeContext =
+    Encode.dict identity Encode.string
 
 
 uri : Prefix -> String
@@ -55,18 +103,21 @@ uri prefix =
         System ->
             "http://terminusdb.com/schema/system#"
 
+        Woql ->
+            "http://terminusdb.com/schema/woql#"
+
         Xsd ->
             "http://www.w3.org/2001/XMLSchema#"
 
 
 uriFromContext : Context -> String -> String
-uriFromContext context prefix =
-    Dict.get prefix context
+uriFromContext c prefix =
+    Dict.get prefix c
         |> Maybe.withDefault prefix
 
 
 fromContext : Context -> String -> List String
-fromContext context u =
+fromContext c u =
     Dict.foldl
         (\k v p ->
             if v == u then
@@ -76,4 +127,4 @@ fromContext context u =
                 p
         )
         [ u ]
-        context
+        c
