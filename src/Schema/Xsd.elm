@@ -19,8 +19,8 @@ string context =
 encodeString : String -> Encode.Value
 encodeString value =
     Encode.object
-        [ ( "@type", Encode.string "xsd:string" )
-        , ( "@value", Encode.string value )
+        [ ( "@value", Encode.string value )
+        , ( "@type", Encode.string "xsd:string" )
         ]
 
 

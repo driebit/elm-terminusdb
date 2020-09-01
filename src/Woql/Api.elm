@@ -16,6 +16,7 @@ module Woql.Api exposing
     , updateTriples
     )
 
+import Base64
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Schema
@@ -37,6 +38,11 @@ type alias ServerUrl =
     String
 
 
+buildAuthorizationToken : String -> String -> String
+buildAuthorizationToken username password =
+    Base64.encode (username ++ ":" ++ password)
+
+
 branch =
     Cmd.none
 
@@ -47,9 +53,14 @@ clone =
 
 connect : (Result Http.Error Session -> msg) -> ServerUrl -> Cmd msg
 connect msg url =
-    Http.get
-        { url = Url.Builder.crossOrigin url [] []
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" ("Basic " ++ buildAuthorizationToken "admin" "root") ]
+        , url = Url.Builder.crossOrigin url [] []
+        , body = Http.emptyBody
         , expect = Http.expectJson msg (Schema.prefixed (sessionDecoder url))
+        , timeout = Nothing
+        , tracker = Nothing
         }
 
 
@@ -102,10 +113,14 @@ query msg maybeInfo p q session =
                 Just i ->
                     Woql.QueryCommitRequest p q i
     in
-    Http.post
-        { url = Url.Builder.crossOrigin session.server [ "woql", "admin", "driebit_test", "local", "branch", "master" ] []
+    Http.request
+        { method = "POST"
+        , headers = [ Http.header "Authorization" ("Basic " ++ buildAuthorizationToken "admin" "root") ]
+        , url = Url.Builder.crossOrigin session.server [ "woql", "admin", "driebit_test", "local", "branch", "master" ] []
         , body = Http.jsonBody (Woql.request request)
         , expect = Http.expectJson msg (Woql.response session.context)
+        , timeout = Nothing
+        , tracker = Nothing
         }
 
 

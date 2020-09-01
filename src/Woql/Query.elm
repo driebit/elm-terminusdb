@@ -1,8 +1,8 @@
 module Woql.Query exposing
-    ( Object(..)
-    , Predicate(..)
+    ( Object
+    , Predicate
     , Query(..)
-    , Subject(..)
+    , Subject
     , Value(..)
     , Variables
     , encode
@@ -22,16 +22,16 @@ type Query
     | Optional Query
 
 
-type Subject
-    = Subject Value
+type alias Subject =
+    Value
 
 
-type Predicate
-    = Predicate Value
+type alias Predicate =
+    Value
 
 
-type Object
-    = Object Value
+type alias Object =
+    Value
 
 
 type Value
@@ -75,7 +75,7 @@ encodeSubQuery context query =
                 , ( "woql:query_list", encodeQueryList queries )
                 ]
 
-            Triple (Subject subject) (Predicate predicate) (Object object) ->
+            Triple subject predicate object ->
                 [ ( "@type", Encode.string "woql:Triple" )
                 , ( "woql:subject", encodeValue subject )
                 , ( "woql:predicate", encodeValue predicate )

@@ -72,6 +72,10 @@ string prefix =
 decodeContext : Decoder Context
 decodeContext =
     Decode.field "@context" (Decode.dict Decode.string)
+        |> Decode.andThen
+            (\c ->
+                Decode.succeed (Dict.insert "api" (uri Api) c)
+            )
 
 
 encodeContext : Context -> Encode.Value
@@ -98,7 +102,7 @@ uri prefix =
             "http://www.w3.org/2000/01/rdf-schema#"
 
         Scm ->
-            "http://195.201.12.87:6365/Seshat/schema#"
+            "terminusdb:///schema#"
 
         System ->
             "http://terminusdb.com/schema/system#"

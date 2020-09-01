@@ -1,13 +1,14 @@
 module Main exposing (..)
 
 import Browser
+import Dict
 import Html exposing (Html)
 import Html.Events as Html
 import Http
 import Schema exposing (Value(..))
 import Schema.Prefix exposing (Prefix(..))
 import Schema.System.User exposing (User)
-import Woql
+import Woql exposing (Bindings)
 import Woql.Api exposing (Session)
 import Woql.Query exposing (..)
 
@@ -15,6 +16,7 @@ import Woql.Query exposing (..)
 type Model
     = Connecting
     | Connected Session
+    | ConnectedWithResult Bindings Session
     | ConnectedWithError String Session
     | Error String
 
@@ -85,7 +87,15 @@ update msg model =
                     ( model, Cmd.none )
 
         GotQueryResponse (Ok result) ->
-            ( model, Cmd.none )
+            case model of
+                Connected session ->
+                    ( ConnectedWithResult result.bindings session, Cmd.none )
+
+                ConnectedWithResult _ session ->
+                    ( ConnectedWithResult result.bindings session, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
         GotQueryResponse (Err reason) ->
             ( Error <| errorString reason, Cmd.none )
@@ -102,15 +112,15 @@ view model =
                 [ Html.text <| "Connected " ++ session.user.name
                 , Html.button
                     [ Html.onClick
-                        (PerformQuery [ Scm ] <|
+                        (PerformQuery [ Scm, Rdf, Rdfs ] <|
                             Select
                                 [ "Start", "Start_Label", "End", "End_Label" ]
                                 (And
-                                    [ Triple (Subject (Var "Journey")) (Predicate (Node "rdf:type")) (Object (Node "scm:Journey"))
-                                    , Triple (Subject (Var "Journey")) (Predicate (Node "scm:start_station")) (Object (Var "Start"))
-                                    , Optional (Triple (Subject (Var "Start")) (Predicate (Node "rdfs:label")) (Object (Var "Start_Label")))
-                                    , Optional (Triple (Subject (Var "End")) (Predicate (Node "rdfs:label")) (Object (Var "End_Label")))
-                                    , Triple (Subject (Var "Journey")) (Predicate (Node "scm:bicycle")) (Object (Var "Bike"))
+                                    [ Triple (Var "Journey") (Node "rdf:type") (Node "scm:Journey")
+                                    , Triple (Var "Journey") (Node "scm:start_station") (Var "Start")
+                                    , Optional (Triple (Var "Start") (Node "rdfs:label") (Var "Start_Label"))
+                                    , Optional (Triple (Var "End") (Node "rdfs:label") (Var "End_Label"))
+                                    , Triple (Var "Journey") (Node "scm:bicycle") (Var "Bike")
                                     ]
                                 )
                         )
@@ -118,12 +128,30 @@ view model =
                     [ Html.text "Bikes query" ]
                 , Html.button
                     [ Html.onClick
-                        (PerformQuery [ Scm ] <|
-                            Triple (Subject (Var "Journey")) (Predicate (Node "rdf:type")) (Object (Node "scm:Journey"))
+                        (PerformQuery [ Scm, Rdf, Rdfs ] <|
+                            And
+                                [ Triple (Var "Journey") (Node "rdf:type") (Node "scm:Journey")
+                                , Triple (Var "Journey") (Node "scm:start_station") (Var "Start")
+                                ]
                         )
                     ]
                     [ Html.text "Simplest query" ]
                 ]
+
+        ConnectedWithResult bindings _ ->
+            case bindings of
+                first :: _ ->
+                    Html.table []
+                        (Html.tr [] (List.map (Html.th [] << List.singleton << Html.text) (Dict.keys first))
+                            :: List.map
+                                (\b ->
+                                    Html.tr [] (List.map (Html.td [] << List.singleton << Html.text) (Dict.values b))
+                                )
+                                bindings
+                        )
+
+                [] ->
+                    Html.text "empty result"
 
         ConnectedWithError message _ ->
             Html.text <| "Error " ++ message

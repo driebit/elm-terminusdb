@@ -89,7 +89,14 @@ prefixAndType type_ =
 field : Prefix.Context -> Prefix -> String -> Decoder a -> Decoder a
 field context prefix name decoder =
     Prefix.fromContext context (Prefix.uri prefix)
-        |> List.map (\p -> Decode.field (p ++ ":" ++ name) decoder)
+        |> List.map
+            (\p ->
+                if p == "" then
+                    Decode.field name decoder
+
+                else
+                    Decode.field (p ++ ":" ++ name) decoder
+            )
         |> Decode.oneOf
 
 

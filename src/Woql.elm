@@ -1,5 +1,6 @@
 module Woql exposing
-    ( CommitInfo
+    ( Bindings
+    , CommitInfo
     , Request(..)
     , Response
     , Status(..)
@@ -7,6 +8,7 @@ module Woql exposing
     , response
     )
 
+import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Schema
@@ -28,7 +30,7 @@ commitInfo { author, message } =
 type alias Response =
     { status : Status
     , variables : List String
-    , bindings : List String
+    , bindings : Bindings
     , inserts : Int
     , deletes : Int
     , retries : Int
@@ -38,6 +40,10 @@ type alias Response =
 type Status
     = Success
     | Failure
+
+
+type alias Bindings =
+    List (Dict String String)
 
 
 response : Prefix.Context -> Decoder Response
@@ -53,11 +59,20 @@ response context =
                     ]
                 )
             )
-            (Schema.field context Prefix.Api "variable_names" (Decode.list Decode.string))
-            (Schema.field context Prefix.None "bindings" (Decode.list Decode.string))
+            (Decode.oneOf
+                [ Schema.field context Prefix.Api "variable_names" (Decode.list Decode.string)
+                , Decode.succeed []
+                ]
+            )
+            (Schema.field context Prefix.None "bindings" decodeBindings)
             (Decode.field "inserts" Decode.int)
             (Decode.field "deletes" Decode.int)
             (Decode.field "transaction_retry_count" Decode.int)
+
+
+decodeBindings : Decoder Bindings
+decodeBindings =
+    Decode.list (Decode.dict Decode.string)
 
 
 type Request
