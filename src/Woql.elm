@@ -13,6 +13,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Schema
 import Schema.Prefix as Prefix exposing (Prefix)
+import Schema.Xsd as Xsd
 import Woql.Query exposing (Query)
 
 
@@ -64,15 +65,21 @@ response context =
                 , Decode.succeed []
                 ]
             )
-            (Schema.field context Prefix.None "bindings" decodeBindings)
+            (Schema.field context Prefix.None "bindings" (decodeBindings context))
             (Decode.field "inserts" Decode.int)
             (Decode.field "deletes" Decode.int)
             (Decode.field "transaction_retry_count" Decode.int)
 
 
-decodeBindings : Decoder Bindings
-decodeBindings =
-    Decode.list (Decode.dict Decode.string)
+decodeBindings : Prefix.Context -> Decoder Bindings
+decodeBindings context =
+    Decode.list
+        (Decode.dict <|
+            Decode.oneOf
+                [ Decode.string
+                , Xsd.string context
+                ]
+        )
 
 
 type Request

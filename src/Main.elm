@@ -27,7 +27,7 @@ type alias Flags =
 
 type Msg
     = GotConnected (Result Http.Error Session)
-    | PerformQuery (List Prefix) Query
+    | PerformQuery String String (List Prefix) Query
     | GotQueryResponse (Result Http.Error Woql.Response)
 
 
@@ -78,10 +78,10 @@ update msg model =
         GotConnected (Err reason) ->
             ( Error <| errorString reason, Cmd.none )
 
-        PerformQuery prefixes query ->
+        PerformQuery org db prefixes query ->
             case model of
                 Connected session ->
-                    ( model, Woql.Api.query GotQueryResponse Nothing prefixes query session )
+                    ( model, Woql.Api.query GotQueryResponse org db Nothing prefixes query session )
 
                 _ ->
                     ( model, Cmd.none )
@@ -112,13 +112,14 @@ view model =
                 [ Html.text <| "Connected " ++ session.user.name
                 , Html.button
                     [ Html.onClick
-                        (PerformQuery [ Scm, Rdf, Rdfs ] <|
+                        (PerformQuery "admin" "driebit_test" [ Scm, Rdf, Rdfs ] <|
                             Select
                                 [ "Start", "Start_Label", "End", "End_Label" ]
                                 (And
                                     [ Triple (Var "Journey") (Node "rdf:type") (Node "scm:Journey")
                                     , Triple (Var "Journey") (Node "scm:start_station") (Var "Start")
                                     , Optional (Triple (Var "Start") (Node "rdfs:label") (Var "Start_Label"))
+                                    , Triple (Var "Journey") (Node "scm:start_station") (Var "Start")
                                     , Optional (Triple (Var "End") (Node "rdfs:label") (Var "End_Label"))
                                     , Triple (Var "Journey") (Node "scm:bicycle") (Var "Bike")
                                     ]
@@ -128,14 +129,45 @@ view model =
                     [ Html.text "Bikes query" ]
                 , Html.button
                     [ Html.onClick
-                        (PerformQuery [ Scm, Rdf, Rdfs ] <|
+                        (PerformQuery "admin" "driebit_test" [ Scm, Rdf, Rdfs ] <|
                             And
                                 [ Triple (Var "Journey") (Node "rdf:type") (Node "scm:Journey")
                                 , Triple (Var "Journey") (Node "scm:start_station") (Var "Start")
+                                , Optional (Triple (Var "Start") (Node "rdfs:label") (Var "Start_Label"))
+                                , Triple (Var "Journey") (Node "scm:journey_bicycle") (Var "Bike")
                                 ]
                         )
                     ]
                     [ Html.text "Simplest query" ]
+                , Html.button
+                    [ Html.onClick
+                        (PerformQuery "admin" "system" [ System, Rdf, Rdfs ] <|
+                            And
+                                [ Triple (Var "User") (Node "rdf:type") (Node "system:User")
+                                , Optional (Triple (Var "User") (Node "rdfs:label") (Var "User_Name"))
+                                ]
+                        )
+                    ]
+                    [ Html.text "System users" ]
+                , Html.button
+                    [ Html.onClick
+                        (PerformQuery "admin" "driebit_site" [ System, Rdf, Rdfs ] <|
+                            And
+                                [ Triple (Var "Page") (Node "rdf:type") (Node "driebit:Page")
+                                , Optional (Triple (Var "User") (Node "rdfs:label") (Var "User_Name"))
+                                ]
+                        )
+                    ]
+                    [ Html.text "Register Page doctype" ]
+                , Html.button
+                    [ Html.onClick
+                        (PerformQuery "admin" "driebit_site" [ System, Rdf, Rdfs, Scm ] <|
+                            And
+                                [ Triple (Var "Page") (Node "rdf:type") (Var "Type")
+                                ]
+                        )
+                    ]
+                    [ Html.text "List pages" ]
                 ]
 
         ConnectedWithResult bindings _ ->

@@ -102,8 +102,8 @@ push =
     Cmd.none
 
 
-query : (Result Http.Error Woql.Response -> msg) -> Maybe Woql.CommitInfo -> List Prefix -> Query -> Session -> Cmd msg
-query msg maybeInfo p q session =
+query : (Result Http.Error Woql.Response -> msg) -> String -> String -> Maybe Woql.CommitInfo -> List Prefix -> Query -> Session -> Cmd msg
+query msg org db maybeInfo p q session =
     let
         request =
             case maybeInfo of
@@ -116,7 +116,7 @@ query msg maybeInfo p q session =
     Http.request
         { method = "POST"
         , headers = [ Http.header "Authorization" ("Basic " ++ buildAuthorizationToken "admin" "root") ]
-        , url = Url.Builder.crossOrigin session.server [ "woql", "admin", "driebit_test", "local", "branch", "master" ] []
+        , url = Url.Builder.crossOrigin session.server [ "woql", org, db, "local", "branch", "master" ] []
         , body = Http.jsonBody (Woql.request request)
         , expect = Http.expectJson msg (Woql.response session.context)
         , timeout = Nothing
