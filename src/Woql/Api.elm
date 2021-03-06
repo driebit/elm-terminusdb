@@ -51,14 +51,16 @@ clone =
     Cmd.none
 
 
-connect : (Result Http.Error Session -> msg) -> ServerUrl -> Cmd msg
-connect msg url =
+connect : (Result Http.Error Session -> msg) -> { server : ServerUrl, user : String, password : String } -> Cmd msg
+connect msg { server, user, password } =
     Http.request
         { method = "GET"
-        , headers = [ Http.header "Authorization" ("Basic " ++ buildAuthorizationToken "admin" "root") ]
-        , url = Url.Builder.crossOrigin url [] []
+        , headers =
+            [ Http.header "Authorization" ("Basic " ++ buildAuthorizationToken user password)
+            ]
+        , url = Url.Builder.crossOrigin server [ "api/" ] []
         , body = Http.emptyBody
-        , expect = Http.expectJson msg (Schema.prefixed (sessionDecoder url))
+        , expect = Http.expectJson msg (Schema.prefixed (sessionDecoder server))
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -116,7 +118,7 @@ query msg org db maybeInfo p q session =
     Http.request
         { method = "POST"
         , headers = [ Http.header "Authorization" ("Basic " ++ buildAuthorizationToken "admin" "root") ]
-        , url = Url.Builder.crossOrigin session.server [ "woql", org, db, "local", "branch", "master" ] []
+        , url = Url.Builder.crossOrigin session.server [ "api", "woql", org, db, "local", "branch", "main" ] []
         , body = Http.jsonBody (Woql.request request)
         , expect = Http.expectJson msg (Woql.response session.context)
         , timeout = Nothing

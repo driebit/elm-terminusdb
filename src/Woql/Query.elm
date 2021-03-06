@@ -20,6 +20,8 @@ type Query
     | Or (List Query)
     | Triple Subject Predicate Object
     | Optional Query
+    | AddTriple Subject Predicate Object
+    | IdGen Base Key String
 
 
 type alias Subject =
@@ -34,9 +36,18 @@ type alias Object =
     Value
 
 
+type alias Base =
+    Value
+
+
+type alias Key =
+    List Value
+
+
 type Value
     = Var String
     | Node String
+    | Literal String
 
 
 type alias Variables =
@@ -86,6 +97,20 @@ encodeSubQuery context query =
                 [ ( "@type", Encode.string "woql:Optional" )
                 , ( "woql:query", encodeSubQuery Nothing subquery )
                 ]
+
+            AddTriple subject predicate object ->
+                [ ( "@type", Encode.string "woql:AddTriple" )
+                , ( "woql:subject", encodeValue subject )
+                , ( "woql:predicate", encodeValue predicate )
+                , ( "woql:object", encodeValue object )
+                ]
+
+            IdGen base key uri ->
+                [ ( "@type", Encode.string "woql:IDGenerator" )
+                , ( "woql:base", encodeValue base )
+                , ( "woql:key_list", encodeKeyList key )
+                , ( "woql:uri", Encode.string uri )
+                ]
         )
             ++ (case context of
                     Nothing ->
@@ -94,6 +119,13 @@ encodeSubQuery context query =
                     Just c ->
                         [ ( "@context", Prefix.encodeContext c ) ]
                )
+
+
+encodeKeyList : List Value -> Encode.Value
+encodeKeyList key =
+    Encode.list
+        (encodeIndexedListItem "woql:ValueListElement" "woql:value_list_element" encodeValue)
+        (List.indexedMap Tuple.pair key)
 
 
 encodeVariableList : List String -> Encode.Value
@@ -133,3 +165,6 @@ encodeValue value =
                 [ ( "@type", Encode.string "woql:Variable" )
                 , ( "woql:variable_name", Xsd.encodeString name )
                 ]
+
+        Literal s ->
+            Xsd.encodeString s

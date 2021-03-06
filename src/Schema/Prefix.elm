@@ -21,6 +21,7 @@ type alias Context =
 
 type Prefix
     = Api
+    | Doc
     | None
     | Owl
     | Rdf
@@ -43,6 +44,9 @@ string prefix =
     case prefix of
         Api ->
             "api"
+
+        Doc ->
+            "doc"
 
         None ->
             ""
@@ -88,6 +92,9 @@ uri prefix =
     case prefix of
         Api ->
             "http://terminusdb.com/schema/api"
+
+        Doc ->
+            "terminusdb:///data/"
 
         None ->
             ""

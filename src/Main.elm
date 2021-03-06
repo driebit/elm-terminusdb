@@ -43,7 +43,7 @@ main =
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     ( Connecting
-    , Woql.Api.connect GotConnected "http://127.0.0.1:6363"
+    , Woql.Api.connect GotConnected { server = "https://localhost:6363", user = "admin", password = "root" }
     )
 
 
